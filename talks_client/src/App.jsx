@@ -24,6 +24,7 @@ function App() {
           <Route path="app" element={<MainComponent />}>
             <Route path="welcome" element={<Welcome />} />
             <Route path="chat/:_id" element={<ChatArea />} />
+            <Route path="chat" element={<Welcome />} /> {/* Fallback for /app/chat without ID */}
             <Route path="users" element={<Users />} />
             <Route path="groups" element={<Groups />} />
             <Route path="create-groups" element={<CreateGroups />} />

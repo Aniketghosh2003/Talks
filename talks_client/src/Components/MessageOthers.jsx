@@ -1,8 +1,6 @@
 import React from "react";
 
-function MessageOthers({ isDark }) {
-  var props1 = { name: "RandomUser", message: "This is a Sample Message" };
-
+function MessageOthers({ props, isDark }) {
   return (
     <div className="flex flex-col space-y-2 p-4">
       <div className="flex items-start space-x-2 max-w-[80%]">
@@ -13,7 +11,7 @@ function MessageOthers({ isDark }) {
             font-bold h-8 w-8 rounded-full
             ${isDark ? "bg-gray-600" : "bg-[#d9d9d9]"}`}
           >
-            {props1.name[0]}
+            {props.sender?.name?.[0] || 'U'}
           </p>
         </div>
 
@@ -27,16 +25,19 @@ function MessageOthers({ isDark }) {
               isDark ? "text-blue-400" : "text-blue-600"
             }`}
           >
-            {props1.name}
+            {props.sender?.name || 'Unknown User'}
           </p>
           <p className={isDark ? "text-white" : "text-gray-800"}>
-            {props1.message}
+            {props.content}
           </p>
           <p
             className={`text-xs self-end mt-1 
             ${isDark ? "text-gray-400" : "text-gray-500"}`}
           >
-            12:00am
+            {new Date(props.createdAt).toLocaleTimeString([], {
+              hour: '2-digit',
+              minute: '2-digit'
+            })}
           </p>
         </div>
       </div>

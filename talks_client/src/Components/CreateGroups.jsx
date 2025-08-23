@@ -5,6 +5,7 @@ import {
   Dialog, 
   DialogTitle, 
   DialogContent,
+  DialogContentText,
   DialogActions,
   Button,
   Checkbox,
@@ -23,6 +24,7 @@ function CreateGroups() {
   const lightTheme = useSelector((state) => state.themeKey);
   const navigate = useNavigate();
   const [open, setOpen] = useState(false);
+  const [confirmOpen, setConfirmOpen] = useState(false);
   const [groupName, setGroupName] = useState("");
   const [users, setUsers] = useState([]);
   const [selectedUsers, setSelectedUsers] = useState([]);
@@ -43,7 +45,7 @@ function CreateGroups() {
             Authorization: `Bearer ${userData.data.token}`,
           },
         };
-        const response = await axios.get("http://localhost:3000/user/fetchUsers", config);
+        const response = await axios.get(`${import.meta.env.VITE_API_URL}/user/fetchUsers`, config);
         setUsers(response.data.filter(user => user._id !== userData.data._id));
       } catch (error) {
         console.error("Error fetching users:", error);
@@ -63,6 +65,10 @@ function CreateGroups() {
   const handleClose = () => {
     setOpen(false);
     setError("");
+  };
+
+  const handleConfirmClose = () => {
+    setConfirmOpen(false);
   };
 
   const handleUserSelect = (userId) => {
@@ -88,7 +94,7 @@ function CreateGroups() {
       };
 
       const response = await axios.post(
-        "http://localhost:3000/chat/createGroup",
+        `${import.meta.env.VITE_API_URL}/chat/createGroup`,
         {
           name: groupName,
           users: JSON.stringify(selectedUsers),
@@ -191,7 +197,7 @@ function CreateGroups() {
             Cancel
           </Button>
           <Button
-            onClick={createGroup}
+            onClick={() => setConfirmOpen(true)}
             disabled={selectedUsers.length === 0 || loading}
             variant="contained"
             color="primary"
@@ -201,6 +207,35 @@ function CreateGroups() {
             ) : (
               'Create Group'
             )}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      <Dialog
+        open={confirmOpen}
+        onClose={handleConfirmClose}
+        aria-labelledby="alert-dialog-title"
+        aria-describedby="alert-dialog-description"
+      >
+        <DialogTitle id="alert-dialog-title">
+          {"Do you want to create a Group Named " + groupName}
+        </DialogTitle>
+        <DialogContent>
+          <DialogContentText id="alert-dialog-description">
+            This will create a create group in which you will be the admin and
+            other will be able to join this group.
+          </DialogContentText>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={handleConfirmClose}>Disagree</Button>
+          <Button
+            onClick={() => {
+              createGroup();
+              handleConfirmClose();
+            }}
+            autoFocus
+          >
+            Agree
           </Button>
         </DialogActions>
       </Dialog>

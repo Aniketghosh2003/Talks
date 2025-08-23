@@ -24,10 +24,12 @@ function Users() {
           },
         };
         const response = await axios.get(
-          "http://localhost:3000/user/fetchUsers",
+          `${import.meta.env.VITE_API_URL}/user/fetchUsers`,
           config
         );
-        setUsers(response.data);
+        // Filter out the current user from the list
+        const filteredUsers = response.data.filter(user => user._id !== userData.data._id);
+        setUsers(filteredUsers);
       } catch (error) {
         console.error("Error fetching users:", error);
       }
@@ -39,6 +41,19 @@ function Users() {
   const createChat = async (userId) => {
     try {
       setLoading(true);
+      
+      // Check if userId exists
+      if (!userId) {
+        console.error("No userId provided");
+        return;
+      }
+
+      // Check if user is trying to chat with themselves
+      if (userId === userData.data._id) {
+        console.error("Cannot create chat with yourself");
+        return;
+      }
+      
       const config = {
         headers: {
           Authorization: `Bearer ${userData.data.token}`,
@@ -46,15 +61,15 @@ function Users() {
       };
 
       const response = await axios.post(
-        "http://localhost:3000/chat/",
-        { userId },
+        `${import.meta.env.VITE_API_URL}/chat/`,
+        { userId: userId },
         config
       );
 
-      console.log("Chat created:", response.data);
-      navigate("/app/chat");
+      navigate(`/app/chat/${response.data._id}`);
     } catch (error) {
       console.error("Error creating chat:", error);
+      console.error("Error response:", error.response?.data);
     } finally {
       setLoading(false);
     }

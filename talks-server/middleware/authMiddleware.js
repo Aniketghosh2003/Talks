@@ -11,18 +11,28 @@ const protect = asyncHandler(async (req, res, next) => {
   ) {
     try {
       token = req.headers.authorization.split(" ")[1];
+      
+      if (!process.env.JWT_SECRET) {
+        console.error("JWT_SECRET not found in environment variables");
+        res.status(500).json({ message: "Server configuration error" });
+        return;
+      }
+      
       const decoded = jwt.verify(token, process.env.JWT_SECRET);
       req.user = await User.findById(decoded.id).select("-password");
+      
+      if (!req.user) {
+        res.status(401).json({ message: "User not found" });
+        return;
+      }
+      
       next();
     } catch (error) {
-      res.status(401);
-      throw new Error("Not authorized, token failed");
+      console.error("Token verification error:", error.message);
+      res.status(401).json({ message: "Not authorized, token failed" });
     }
-  }
-
-  if (!token) {
-    res.status(401);
-    throw new Error("Not authorized, no token");
+  } else {
+    res.status(401).json({ message: "Not authorized, no token" });
   }
 });
 

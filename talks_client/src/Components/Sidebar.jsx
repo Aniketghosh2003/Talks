@@ -4,12 +4,14 @@ import PersonAddIcon from "@mui/icons-material/PersonAdd";
 import GroupAddIcon from "@mui/icons-material/GroupAdd";
 import AddCircleIcon from "@mui/icons-material/AddCircle";
 import NightlightIcon from "@mui/icons-material/Nightlight";
+import ExitToAppIcon from "@mui/icons-material/ExitToApp";
 import SearchIcon from "@mui/icons-material/Search";
 import { IconButton } from "@mui/material";
 import ConversationItem from "./ConversationItem";
 import { useNavigate } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
 import { toggleTheme } from "../redux/themeSlice";
+import { refreshSidebarFun } from "../redux/refreshSidebar";
 import LightModeIcon from "@mui/icons-material/LightMode";
 import { motion } from "framer-motion";
 import axios from "axios";
@@ -19,6 +21,7 @@ function Sidebar() {
   const dispatch = useDispatch();
   const navigate = useNavigate();
   const lightTheme = useSelector((state) => state.themeKey);
+  const refreshSidebar = useSelector((state) => state.refreshSidebar);
   const { refresh, setRefresh } = useContext(myContext);
   const [conversations, setConversations] = useState([]);
   const [searchQuery, setSearchQuery] = useState("");
@@ -38,7 +41,7 @@ function Sidebar() {
             Authorization: `Bearer ${userData.data.token}`,
           },
         };
-        const response = await axios.get("http://localhost:3000/chat/", config);
+        const response = await axios.get(`${import.meta.env.VITE_API_URL}/chat/`, config);
         setConversations(response.data);
       } catch (error) {
         console.error("Error fetching conversations:", error);
@@ -46,14 +49,14 @@ function Sidebar() {
     };
 
     fetchConversations();
-  }, [refresh, userData, navigate]);
+  }, [refresh, refreshSidebar, userData, navigate]);
 
-  const filteredConversations = conversations.filter(conversation => {
-    const chatName = conversation.isGroupChat 
-      ? conversation.chatName 
-      : conversation.users.find(user => user._id !== userData?.data._id)?.name;
-    return chatName.toLowerCase().includes(searchQuery.toLowerCase());
-  });
+  const handleLogout = () => {
+    // Clear local storage
+    localStorage.removeItem("userData");
+    // Navigate to login
+    navigate("/");
+  };
 
   return (
     <div className={`flex-[0.3] flex flex-col ${!lightTheme ? "bg-gray-800" : ""}`}>
@@ -116,6 +119,17 @@ function Sidebar() {
               <LightModeIcon fontSize="medium" className="text-white" />
             )}
           </IconButton>
+          <IconButton
+            size="medium"
+            onClick={handleLogout}
+            className={!lightTheme ? "hover:bg-gray-600" : ""}
+            title="Logout"
+          >
+            <ExitToAppIcon
+              fontSize="medium"
+              className={!lightTheme ? "text-white" : ""}
+            />
+          </IconButton>
         </div>
       </div>
 
@@ -139,30 +153,97 @@ function Sidebar() {
       </motion.div>
 
       {/* Conversations list */}
-      <div className={`rounded-xl px-3 py-2 m-2 flex-1 overflow-y-auto shadow-md
+      <div className={`rounded-xl px-3 py-2 m-2 flex-1 overflow-y-auto shadow-md space-y-2
         ${lightTheme ? "bg-white" : "bg-gray-700"}`}>
-        {filteredConversations.map((conversation) => {
-          const chatName = conversation.isGroupChat 
-            ? conversation.chatName 
-            : conversation.users.find(user => user._id !== userData?.data._id)?.name;
+        {conversations.map((conversation, index) => {
+          // console.log("current convo : ", conversation);
+          if (conversation.users.length === 1) {
+            return <div key={index}></div>;
+          }
+          
+          // Find the other user (not the current logged-in user)
+          const otherUser = conversation.users.find(user => user._id !== userData.data._id);
+          
+          if (!otherUser) {
+            return <div key={index}></div>; // Skip if no other user found
+          }
+          
+          if (conversation.latestMessage === undefined) {
+            // console.log("No Latest Message with ", otherUser);
+            return (
+              <div
+                key={index}
+                className={`p-3 rounded-lg cursor-pointer transition-colors duration-200 mb-2
+                  ${index % 2 === 0 
+                    ? (lightTheme ? "bg-gray-50 hover:bg-gray-100" : "bg-gray-600 hover:bg-gray-500")
+                    : (lightTheme ? "bg-gray-100 hover:bg-gray-200" : "bg-gray-650 hover:bg-gray-600")
+                  }
+                `}
+                onClick={() => {
+                  // dispatch(refreshSidebarFun());
+                  setRefresh(!refresh);
+                  // Only use the conversation._id for navigation, no extra params
+                  if (conversation._id) {
+                    navigate(`/app/chat/${conversation._id}`);
+                  } else {
+                    console.error("No conversation._id found!");
+                  }
+                }}
+              >
+                <div className="conversation-container">
+                  <p className={"con-icon" + (lightTheme ? "" : " dark")}>
+                    {otherUser.name[0]}
+                  </p>
+                  <p className={"con-title" + (lightTheme ? "" : " dark")}>
+                    {otherUser.name}
+                  </p>
 
-          return (
-            <ConversationItem
-              key={conversation._id}
-              props={{
-                _id: conversation._id,
-                name: chatName || "Unknown",
-                lastMessage: conversation.latestMessage 
-                  ? conversation.latestMessage.content 
-                  : "No previous messages",
-                timeStamp: conversation.latestMessage 
-                  ? new Date(conversation.latestMessage.createdAt).toLocaleTimeString() 
-                  : "New",
-                isGroup: conversation.isGroupChat
-              }}
-              isDark={!lightTheme}
-            />
-          );
+                  <p className="con-lastMessage">
+                    No previous Messages, click here to start a new chat
+                  </p>
+                  {/* <p className={"con-timeStamp" + (lightTheme ? "" : " dark")}>
+                {conversation.timeStamp}
+              </p> */}
+                </div>
+              </div>
+            );
+          } else {
+            return (
+              <div
+                key={index}
+                className={`p-3 rounded-lg cursor-pointer transition-colors duration-200 mb-2
+                  ${index % 2 === 0 
+                    ? (lightTheme ? "bg-gray-50 hover:bg-gray-100" : "bg-gray-600 hover:bg-gray-500")
+                    : (lightTheme ? "bg-gray-100 hover:bg-gray-200" : "bg-gray-650 hover:bg-gray-600")
+                  }
+                `}
+                onClick={() => {
+                  // Only use the conversation._id for navigation, no extra params
+                  if (conversation._id) {
+                    navigate(`/app/chat/${conversation._id}`);
+                  } else {
+                    console.error("No conversation._id found!");
+                  }
+                }}
+              >
+                <div className="conversation-container">
+                  <p className={"con-icon" + (lightTheme ? "" : " dark")}>
+                    {otherUser.name[0]}
+                  </p>
+                  <p className={"con-title" + (lightTheme ? "" : " dark")}>
+                    {otherUser.name}
+                  </p>
+
+                  <p className="con-lastMessage">
+                    {conversation.latestMessage.content}
+                  </p>
+                  {/* <p className={"con-timeStamp" + (lightTheme ? "" : " dark")}>
+                {conversation.timeStamp}
+              </p> */}
+                </div>
+              </div>
+            );
+          }
         })}
       </div>
     </div>

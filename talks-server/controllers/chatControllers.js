@@ -1,6 +1,6 @@
 const asyncHandler = require("express-async-handler");
-const Chat = require("../modals/chatModel");
-const User = require("../modals/userModel");
+const Chat = require("../models/chatModel");
+const User = require("../models/userModel");
 
 const accessChat = asyncHandler(async (req, res) => {
   const { userId } = req.body;
@@ -11,7 +11,7 @@ const accessChat = asyncHandler(async (req, res) => {
   }
 
   var isChat = await Chat.find({
-    isGroupChat: false,
+    isGroupchat: false,
     $and: [
       { users: { $elemMatch: { $eq: req.user._id } } },
       { users: { $elemMatch: { $eq: userId } } },
@@ -30,7 +30,7 @@ const accessChat = asyncHandler(async (req, res) => {
   } else {
     var chatData = {
       chatName: "sender",
-      isGroupChat: false,
+      isGroupchat: false,
       users: [req.user._id, userId],
     };
 
@@ -70,7 +70,7 @@ const fetchChats = asyncHandler(async (req, res) => {
 
 const fetchGroups = asyncHandler(async (req, res) => {
   try {
-    const allGroups = await Chat.where("isGroupChat").equals(true);
+    const allGroups = await Chat.where("isGroupchat").equals(true);
     res.status(200).send(allGroups);
   } catch (error) {
     res.status(400);
@@ -91,7 +91,7 @@ const createGroupChat = asyncHandler(async (req, res) => {
     const groupChat = await Chat.create({
       chatName: req.body.name,
       users: users,
-      isGroupChat: true,
+      isGroupchat: true,
       groupAdmin: req.user,
     });
 
@@ -112,7 +112,7 @@ const addSelfToGroup = asyncHandler(async (req, res) => {
   const added = await Chat.findByIdAndUpdate(
     chatId,
     {
-      $push: { users: userId },
+      $addToSet: { users: userId },
     },
     {
       new: true,
@@ -153,6 +153,36 @@ const groupExit = asyncHandler(async (req, res) => {
   }
 });
 
+// Cleanup function to remove duplicate users from groups
+const cleanupGroupDuplicates = asyncHandler(async (req, res) => {
+  try {
+    const groups = await Chat.find({ isGroupchat: true });
+    let updatedCount = 0;
+
+    for (const group of groups) {
+      // Get unique users by converting ObjectIds to strings and using Set
+      const uniqueUserIds = [...new Set(group.users.map(id => id.toString()))];
+      
+      // Only update if there are duplicates
+      if (uniqueUserIds.length !== group.users.length) {
+        await Chat.findByIdAndUpdate(group._id, {
+          users: uniqueUserIds
+        });
+        updatedCount++;
+        console.log(`Cleaned duplicates from group: ${group.chatName}`);
+      }
+    }
+
+    res.status(200).json({
+      message: `Cleanup completed. Updated ${updatedCount} groups.`,
+      updatedGroups: updatedCount
+    });
+  } catch (error) {
+    res.status(400);
+    throw new Error(error.message);
+  }
+});
+
 module.exports = {
   accessChat,
   fetchChats,
@@ -160,4 +190,5 @@ module.exports = {
   createGroupChat,
   addSelfToGroup,
   groupExit,
+  cleanupGroupDuplicates,
 };

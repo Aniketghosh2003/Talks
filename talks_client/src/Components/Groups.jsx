@@ -26,7 +26,7 @@ function Groups() {
         };
 
         const response = await axios.get(
-          "http://localhost:3000/chat/fetchGroups", 
+          `${import.meta.env.VITE_API_URL}/chat/fetchGroups`, 
           config
         );
         setGroups(response.data);
@@ -49,7 +49,7 @@ function Groups() {
       };
 
       await axios.put(
-        "http://localhost:3000/chat/addSelfToGroup",
+        `${import.meta.env.VITE_API_URL}/chat/addSelfToGroup`,
         {
           chatId: groupId,
           userId: userData.data._id,

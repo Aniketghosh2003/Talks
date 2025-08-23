@@ -1,8 +1,12 @@
+const express = require("express");
 const {
+  accessChat,
+  fetchChats,
   createGroupChat,
   groupExit,
   fetchGroups,
   addSelfToGroup,
+  cleanupGroupDuplicates,
 } = require("../controllers/chatControllers");
 const { protect } = require("../middleware/authMiddleware");
 
@@ -14,5 +18,6 @@ router.route("/createGroup").post(protect, createGroupChat);
 router.route("/fetchGroups").get(protect, fetchGroups);
 router.route("/groupExit").put(protect, groupExit);
 router.route("/addSelfToGroup").put(protect, addSelfToGroup);
+router.route("/cleanupDuplicates").post(protect, cleanupGroupDuplicates);
 
 module.exports = router;
