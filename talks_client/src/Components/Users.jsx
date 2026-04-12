@@ -1,13 +1,15 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useContext } from "react";
 import SearchIcon from "@mui/icons-material/Search";
 import { IconButton } from "@mui/material";
 import { useSelector } from "react-redux";
 import { motion } from "framer-motion";
 import axios from "axios";
 import { useNavigate } from "react-router-dom";
+import { myContext } from "./MainComponent";
 
 function Users() {
   const lightTheme = useSelector((state) => state.themeKey);
+  const { onlineUsers = [] } = useContext(myContext);
   const [users, setUsers] = useState([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [loading, setLoading] = useState(false);
@@ -18,9 +20,10 @@ function Users() {
   useEffect(() => {
     const fetchUsers = async () => {
       try {
+        const token = userData?.data?.token || userData?.token;
         const config = {
           headers: {
-            Authorization: `Bearer ${userData.data.token}`,
+            Authorization: `Bearer ${token}`,
           },
         };
         const response = await axios.get(
@@ -28,14 +31,15 @@ function Users() {
           config
         );
         // Filter out the current user from the list
-        const filteredUsers = response.data.filter(user => user._id !== userData.data._id);
+        const currentUserId = userData?.data?._id || userData?._id;
+        const filteredUsers = response.data.filter(user => user._id !== currentUserId);
         setUsers(filteredUsers);
       } catch (error) {
         console.error("Error fetching users:", error);
       }
     };
     fetchUsers();
-  }, [userData.data.token]);
+  }, [userData?.data?.token, userData?.token]);
 
   // Create chat handler
   const createChat = async (userId) => {
@@ -49,14 +53,16 @@ function Users() {
       }
 
       // Check if user is trying to chat with themselves
-      if (userId === userData.data._id) {
+      const currentUserId = userData?.data?._id || userData?._id;
+      if (userId === currentUserId) {
         console.error("Cannot create chat with yourself");
         return;
       }
       
+      const token = userData?.data?.token || userData?.token;
       const config = {
         headers: {
-          Authorization: `Bearer ${userData.data.token}`,
+          Authorization: `Bearer ${token}`,
         },
       };
 
@@ -75,9 +81,10 @@ function Users() {
     }
   };
 
-  // Filter users based on search
+  // Filter users based on search and online status
   const filteredUsers = users.filter((user) =>
-    user.name.toLowerCase().includes(searchQuery.toLowerCase())
+    user.name.toLowerCase().includes(searchQuery.toLowerCase()) && 
+    onlineUsers.includes(user._id)
   );
 
   return (

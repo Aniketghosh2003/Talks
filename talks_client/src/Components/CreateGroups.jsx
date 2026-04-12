@@ -40,13 +40,15 @@ function CreateGroups() {
 
     const fetchUsers = async () => {
       try {
+        const token = userData?.data?.token || userData?.token;
         const config = {
           headers: {
-            Authorization: `Bearer ${userData.data.token}`,
+            Authorization: `Bearer ${token}`,
           },
         };
         const response = await axios.get(`${import.meta.env.VITE_API_URL}/user/fetchUsers`, config);
-        setUsers(response.data.filter(user => user._id !== userData.data._id));
+        const currentUserId = userData?.data?._id || userData?._id;
+        setUsers(response.data.filter(user => user._id !== currentUserId));
       } catch (error) {
         console.error("Error fetching users:", error);
         setError("Failed to fetch users");
@@ -87,9 +89,10 @@ function CreateGroups() {
 
     setLoading(true);
     try {
+      const token = userData?.data?.token || userData?.token;
       const config = {
         headers: {
-          Authorization: `Bearer ${userData.data.token}`,
+          Authorization: `Bearer ${token}`,
         },
       };
 

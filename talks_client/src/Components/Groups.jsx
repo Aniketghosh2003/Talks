@@ -19,9 +19,10 @@ function Groups() {
   useEffect(() => {
     const fetchGroups = async () => {
       try {
+        const token = userData?.data?.token || userData?.token;
         const config = {
           headers: {
-            Authorization: `Bearer ${userData.data.token}`,
+            Authorization: `Bearer ${token}`,
           },
         };
 
@@ -42,17 +43,19 @@ function Groups() {
   const handleJoinGroup = async (groupId) => {
     try {
       setLoading(true);
+      const token = userData?.data?.token || userData?.token;
       const config = {
         headers: {
-          Authorization: `Bearer ${userData.data.token}`,
+          Authorization: `Bearer ${token}`,
         },
       };
 
+      const userId = userData?.data?._id || userData?._id;
       await axios.put(
         `${import.meta.env.VITE_API_URL}/chat/addSelfToGroup`,
         {
           chatId: groupId,
-          userId: userData.data._id,
+          userId: userId,
         },
         config
       );

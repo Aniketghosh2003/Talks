@@ -6,6 +6,7 @@ import Welcome from "./Components/Welcome";
 import ChatArea from "./Components/ChatArea";
 import Users from "./Components/Users";
 import CreateGroups from "./Components/CreateGroups";
+import Profile from "./Components/Profile";
 import { Routes, Route } from "react-router-dom";
 import Groups from "./Components/Groups";
 import { useSelector } from "react-redux";
@@ -16,7 +17,7 @@ function App() {
   return (
     <>
       <div
-        className={`h-screen flex justify-center items-center
+        className={`h-screen w-screen overflow-hidden
         ${lightTheme ? "bg-[#dddedd]" : "bg-gray-900"}`}
       >
         <Routes>
@@ -24,10 +25,11 @@ function App() {
           <Route path="app" element={<MainComponent />}>
             <Route path="welcome" element={<Welcome />} />
             <Route path="chat/:_id" element={<ChatArea />} />
-            <Route path="chat" element={<Welcome />} /> {/* Fallback for /app/chat without ID */}
+            <Route path="chat" element={<Welcome />} />
             <Route path="users" element={<Users />} />
             <Route path="groups" element={<Groups />} />
             <Route path="create-groups" element={<CreateGroups />} />
+            <Route path="profile" element={<Profile />} />
           </Route>
         </Routes>
       </div>

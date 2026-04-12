@@ -72,9 +72,50 @@ const fetchAllUsersController = expressAsyncHandler(async (req, res) => {
   res.send(users);
 });
 
+const getMyProfileController = expressAsyncHandler(async (req, res) => {
+  const user = await User.findById(req.user._id).select('-password');
+  if (!user) {
+    return res.status(404).json({ message: "User not found" });
+  }
+  res.json(user);
+});
+
+const updateProfileController = expressAsyncHandler(async (req, res) => {
+  const { name, about, profilePic } = req.body;
+
+  // Check if new name is taken by someone else
+  if (name && name !== req.user.name) {
+    const taken = await User.findOne({ name });
+    if (taken) {
+      return res.status(406).json({ message: "Username already taken" });
+    }
+  }
+
+  const updatedUser = await User.findByIdAndUpdate(
+    req.user._id,
+    {
+      ...(name && { name }),
+      ...(about !== undefined && { about }),
+      ...(profilePic !== undefined && { profilePic }),
+    },
+    { new: true }
+  ).select('-password');
+
+  res.json({
+    _id: updatedUser._id,
+    name: updatedUser.name,
+    email: updatedUser.email,
+    about: updatedUser.about,
+    profilePic: updatedUser.profilePic,
+    token: req.user.token, // preserve existing token
+  });
+});
+
 module.exports = {
   registerController,
   loginController,
   fetchAllUsersController,
+  getMyProfileController,
+  updateProfileController,
 };
 

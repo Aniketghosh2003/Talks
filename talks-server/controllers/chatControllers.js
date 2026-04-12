@@ -6,7 +6,7 @@ const accessChat = asyncHandler(async (req, res) => {
   const { userId } = req.body;
 
   if (!userId) {
-    console.log("UserId param not sent with request");
+    //console.log("UserId param not sent with request");
     return res.sendStatus(400);
   }
 
@@ -84,7 +84,7 @@ const createGroupChat = asyncHandler(async (req, res) => {
   }
 
   var users = JSON.parse(req.body.users);
-  console.log("chatController/createGroups : ", req);
+  //console.log("chatController/createGroups : ", req);
   users.push(req.user);
 
   try {
@@ -162,14 +162,14 @@ const cleanupGroupDuplicates = asyncHandler(async (req, res) => {
     for (const group of groups) {
       // Get unique users by converting ObjectIds to strings and using Set
       const uniqueUserIds = [...new Set(group.users.map(id => id.toString()))];
-      
+
       // Only update if there are duplicates
       if (uniqueUserIds.length !== group.users.length) {
         await Chat.findByIdAndUpdate(group._id, {
           users: uniqueUserIds
         });
         updatedCount++;
-        console.log(`Cleaned duplicates from group: ${group.chatName}`);
+        //console.log(`Cleaned duplicates from group: ${group.chatName}`);
       }
     }
 
@@ -183,6 +183,32 @@ const cleanupGroupDuplicates = asyncHandler(async (req, res) => {
   }
 });
 
+const updateGroupPic = asyncHandler(async (req, res) => {
+  const { chatId, groupPic } = req.body;
+
+  const chat = await Chat.findById(chatId);
+  if (!chat) {
+    res.status(404);
+    throw new Error("Chat not found");
+  }
+
+  // Only group admin can change the icon
+  if (chat.groupAdmin.toString() !== req.user._id.toString()) {
+    res.status(403);
+    throw new Error("Only the group admin can change the group icon");
+  }
+
+  const updated = await Chat.findByIdAndUpdate(
+    chatId,
+    { groupPic },
+    { new: true }
+  )
+    .populate("users", "-password")
+    .populate("groupAdmin", "-password");
+
+  res.json(updated);
+});
+
 module.exports = {
   accessChat,
   fetchChats,
@@ -191,4 +217,5 @@ module.exports = {
   addSelfToGroup,
   groupExit,
   cleanupGroupDuplicates,
+  updateGroupPic,
 };

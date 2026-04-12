@@ -54,4 +54,19 @@ const sendMessage = expressAsyncHandler(async (req, res) => {
   }
 });
 
-module.exports = { allMessages, sendMessage };
+const markMessagesRead = expressAsyncHandler(async (req, res) => {
+  try {
+    const cleanChatId = req.params.chatId.split('&')[0];
+    // Mark all messages in this chat as read where the current user is NOT the sender
+    await Message.updateMany(
+      { chat: cleanChatId, sender: { $ne: req.user._id }, status: { $ne: 'read' } },
+      { $set: { status: 'read' } }
+    );
+    res.json({ success: true });
+  } catch (error) {
+    res.status(400);
+    throw new Error(error.message);
+  }
+});
+
+module.exports = { allMessages, sendMessage, markMessagesRead };

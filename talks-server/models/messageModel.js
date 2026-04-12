@@ -9,6 +9,11 @@ const messageModel = new mongoose.Schema({
         ref:'User'},
     chat:{type:mongoose.Schema.Types.ObjectId,
         ref:'Chat'},
+    status: {
+        type: String,
+        enum: ['sent', 'delivered', 'read'],
+        default: 'sent',
+    },
 },{
     timestamps:true
 }); 

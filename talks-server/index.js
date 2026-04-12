@@ -43,6 +43,68 @@ app.use("/message", messageRoutes);
 
 const PORT = process.env.PORT || 3000;
 
-app.listen(PORT, () => {
+const server = app.listen(PORT, () => {
   console.log(`Server is running on http://localhost:${PORT}`);
+});
+
+const io = require("socket.io")(server, {
+  cors: {
+    origin: "http://localhost:5173",
+    credentials: true,
+  },
+});
+
+const connectedUsers = new Map();
+
+io.on("connection", (socket) => {
+  console.log("Connected to socket.io");
+  socket.on("setup", (userData) => {
+    socket.join(userData._id);
+    socket.emit("connected");
+
+    // Add to online users and broadcast
+    connectedUsers.set(socket.id, userData._id);
+    io.emit("online users", Array.from(new Set(connectedUsers.values())));
+  });
+
+  socket.on("join chat", (room) => {
+    socket.join(room);
+    console.log("User Joined Room: " + room);
+  });
+
+  socket.on("new message", (newMessageRecieved) => {
+    var chat = newMessageRecieved.chat;
+
+    if (!chat.users) return console.log("chat.users not defined");
+
+    chat.users.forEach((user) => {
+      if (user._id == newMessageRecieved.sender._id) return;
+
+      // Notify recipient of the new message
+      socket.in(user._id).emit("message recieved", newMessageRecieved);
+
+      // Notify sender that message was delivered to this recipient
+      // (only if recipient is online)
+      if ([...connectedUsers.values()].includes(user._id)) {
+        socket.in(newMessageRecieved.sender._id).emit("message delivered", {
+          messageId: newMessageRecieved._id,
+          chatId: chat._id,
+        });
+      }
+    });
+  });
+
+  // When a user opens a chat, mark messages as read and notify senders
+  socket.on("messages read", ({ chatId, readerId }) => {
+    // Broadcast to everyone in the chat room that this user read the messages
+    socket.to(chatId).emit("messages read", { chatId, readerId });
+  });
+
+  socket.on("disconnect", () => {
+    //console.log("USER DISCONNECTED");
+    if (connectedUsers.has(socket.id)) {
+      connectedUsers.delete(socket.id);
+      io.emit("online users", Array.from(new Set(connectedUsers.values())));
+    }
+  });
 });

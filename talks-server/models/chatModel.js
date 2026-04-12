@@ -10,6 +10,7 @@ const chatModel = new mongoose.Schema(
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",
     },
+    groupPic: { type: String, default: '' },
   },
   {
     timestamps: true,

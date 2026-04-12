@@ -7,6 +7,7 @@ const {
   fetchGroups,
   addSelfToGroup,
   cleanupGroupDuplicates,
+  updateGroupPic,
 } = require("../controllers/chatControllers");
 const { protect } = require("../middleware/authMiddleware");
 
@@ -19,5 +20,6 @@ router.route("/fetchGroups").get(protect, fetchGroups);
 router.route("/groupExit").put(protect, groupExit);
 router.route("/addSelfToGroup").put(protect, addSelfToGroup);
 router.route("/cleanupDuplicates").post(protect, cleanupGroupDuplicates);
+router.route("/groupPic").put(protect, updateGroupPic);
 
 module.exports = router;
