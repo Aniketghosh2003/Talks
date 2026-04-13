@@ -1,0 +1,28 @@
+services:
+  - type: web
+    name: talks-server
+    env: node
+    rootDir: talks-server
+    buildCommand: npm install
+    startCommand: npm start
+    envVars:
+      - key: MONGO_URI
+        sync: false
+      - key: JWT_SECRET
+        generateValue: true
+      - key: FRONTEND_URL
+        sync: false
+
+  - type: web
+    runtime: static
+    name: talks-client
+    rootDir: talks_client
+    buildCommand: npm install && npm run build
+    staticPublishPath: dist
+    envVars:
+      - key: VITE_API_URL
+        sync: false
+    routes:
+      - type: rewrite
+        source: /*
+        destination: /index.html
