@@ -9,7 +9,7 @@ const allMessages = expressAsyncHandler(async (req, res) => {
     const cleanChatId = req.params.chatId.split('&')[0];
     
     const messages = await Message.find({ chat: cleanChatId })
-      .populate("sender", "name email")
+      .populate("sender", "name email profilePic")
       .populate("receiver")
       .populate("chat")
       .sort({ createdAt: 1 }); // Sort by creation time (oldest first)
@@ -21,24 +21,39 @@ const allMessages = expressAsyncHandler(async (req, res) => {
 });
 
 const sendMessage = expressAsyncHandler(async (req, res) => {
-  const { content, chatId } = req.body;
+  const { content, chatId, attachment } = req.body;
+  const hasText = typeof content === "string" && content.trim().length > 0;
+  const hasAttachment = attachment && typeof attachment.data === "string";
 
-  if (!content || !chatId) {
+  if (!chatId || (!hasText && !hasAttachment)) {
     // console.log("Invalid data passed into request");
     return res.sendStatus(400);
   }
 
+  if (hasAttachment && attachment.data.length > 7_000_000) {
+    return res.status(413).json({ message: "Attachment is too large" });
+  }
+
   var newMessage = {
     sender: req.user._id,
-    content: content,
+    content: hasText ? content : "",
     chat: chatId,
   };
+
+  if (hasAttachment) {
+    newMessage.attachment = {
+      name: attachment.name,
+      mimeType: attachment.mimeType,
+      size: attachment.size,
+      data: attachment.data,
+    };
+  }
 
   try {
     var message = await Message.create(newMessage);
 
     // console.log(message);
-    message = await message.populate("sender", "name");
+    message = await message.populate("sender", "name email profilePic");
     message = await message.populate("chat");
     message = await message.populate("receiver");
     message = await User.populate(message, {

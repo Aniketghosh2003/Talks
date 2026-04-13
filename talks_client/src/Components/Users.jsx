@@ -3,7 +3,6 @@ import SearchIcon from "@mui/icons-material/Search";
 import { IconButton } from "@mui/material";
 import { useSelector } from "react-redux";
 import { motion } from "framer-motion";
-import axios from "axios";
 import { useNavigate } from "react-router-dom";
 import { myContext } from "./MainComponent";
 
@@ -14,7 +13,20 @@ function Users() {
   const [searchQuery, setSearchQuery] = useState("");
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
-  const userData = JSON.parse(localStorage.getItem("userData"));
+  const getUserDataSafely = () => {
+    const raw = localStorage.getItem("userData");
+    if (!raw) return null;
+    try {
+      const parsed = JSON.parse(raw);
+      if (parsed?.data?.token) return parsed;
+      if (parsed?.token) return { data: parsed };
+      return parsed;
+    } catch {
+      return null;
+    }
+  };
+
+  const userData = getUserDataSafely();
 
   // Fetch all users
   useEffect(() => {
@@ -26,13 +38,17 @@ function Users() {
             Authorization: `Bearer ${token}`,
           },
         };
-        const response = await axios.get(
-          `${import.meta.env.VITE_API_URL}/user/fetchUsers`,
-          config
-        );
+        const response = await fetch(`${import.meta.env.VITE_API_URL}/user/fetchUsers`, {
+          method: "GET",
+          headers: config.headers,
+        });
+        const responseData = await response.json();
+        if (!response.ok) {
+          throw new Error("Failed to fetch users");
+        }
         // Filter out the current user from the list
         const currentUserId = userData?.data?._id || userData?._id;
-        const filteredUsers = response.data.filter(user => user._id !== currentUserId);
+        const filteredUsers = responseData.filter(user => user._id !== currentUserId);
         setUsers(filteredUsers);
       } catch (error) {
         console.error("Error fetching users:", error);
@@ -45,7 +61,7 @@ function Users() {
   const createChat = async (userId) => {
     try {
       setLoading(true);
-      
+
       // Check if userId exists
       if (!userId) {
         console.error("No userId provided");
@@ -58,7 +74,7 @@ function Users() {
         console.error("Cannot create chat with yourself");
         return;
       }
-      
+
       const token = userData?.data?.token || userData?.token;
       const config = {
         headers: {
@@ -66,16 +82,26 @@ function Users() {
         },
       };
 
-      const response = await axios.post(
-        `${import.meta.env.VITE_API_URL}/chat/`,
-        { userId: userId },
-        config
-      );
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/chat/`, {
+        method: "POST",
+        headers: {
+          ...config.headers,
+          "Content-type": "application/json",
+        },
+        body: JSON.stringify({ userId: userId }),
+      });
+      const responseData = await response.json();
+      if (!response.ok) {
+        const error = new Error("Failed to create chat");
+        error.status = response.status;
+        error.data = responseData;
+        throw error;
+      }
 
-      navigate(`/app/chat/${response.data._id}`);
+      navigate(`/app/chat/${responseData._id}`);
     } catch (error) {
       console.error("Error creating chat:", error);
-      console.error("Error response:", error.response?.data);
+      console.error("Error response:", error.data);
     } finally {
       setLoading(false);
     }
@@ -83,13 +109,13 @@ function Users() {
 
   // Filter users based on search and online status
   const filteredUsers = users.filter((user) =>
-    user.name.toLowerCase().includes(searchQuery.toLowerCase()) && 
+    user.name.toLowerCase().includes(searchQuery.toLowerCase()) &&
     onlineUsers.includes(user._id)
   );
 
   return (
     <div
-      className={`flex-[0.7] flex flex-col ${!lightTheme ? "bg-gray-800" : ""}`}
+      className={`w-full md:flex-[0.7] flex flex-col ${!lightTheme ? "bg-gray-800" : ""}`}
     >
       {/* Header */}
       <div
@@ -123,10 +149,9 @@ function Users() {
           onChange={(e) => setSearchQuery(e.target.value)}
           placeholder="Search users..."
           className={`outline-none border-none text-lg w-full px-3 py-2
-            ${
-              lightTheme
-                ? "bg-white"
-                : "bg-gray-700 text-white placeholder-gray-400"
+            ${lightTheme
+              ? "bg-white"
+              : "bg-gray-700 text-white placeholder-gray-400"
             }`}
         />
       </motion.div>
@@ -141,20 +166,18 @@ function Users() {
             onClick={() => createChat(user._id)}
             className={`flex items-center p-4 rounded-2xl shadow-md cursor-pointer 
               transition-colors ${loading ? "opacity-50" : ""}
-              ${
-                lightTheme
-                  ? "bg-white hover:bg-gray-50"
-                  : "bg-gray-700 hover:bg-gray-600"
+              ${lightTheme
+                ? "bg-white hover:bg-gray-50"
+                : "bg-gray-700 hover:bg-gray-600"
               }`}
           >
             <div className="flex items-center gap-4 w-full">
               <div
                 className={`rounded-full h-12 w-12 flex items-center justify-center
-                ${
-                  lightTheme
+                ${lightTheme
                     ? "bg-gray-200 text-gray-500"
                     : "bg-gray-600 text-white"
-                }`}
+                  }`}
               >
                 <span className="text-xl font-semibold">{user.name[0]}</span>
               </div>

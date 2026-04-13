@@ -33,6 +33,8 @@ function MessageTick({ status }) {
 
 function MessageSelf({ props, isDark }) {
   const status = props.status || "sent";
+  const attachment = props.attachment;
+  const isImageAttachment = attachment?.mimeType?.startsWith("image/");
 
   return (
     <div className="flex mb-[2px] w-full justify-end">
@@ -42,13 +44,35 @@ function MessageSelf({ props, isDark }) {
           ${isDark ? "bg-[#005c4b]" : "bg-[#d9fdd3]"}
           rounded-md rounded-tr-sm`}
         >
-          <div className="flex items-end gap-1">
-            <span
-              className={`text-[14.5px] leading-5 whitespace-pre-wrap break-words
-               ${isDark ? "text-[#e9edef]" : "text-[#111b21]"}`}
-            >
-              {props.content}
-            </span>
+          <div className="flex flex-col gap-1">
+            {attachment && (
+              isImageAttachment ? (
+                <img
+                  src={attachment.data}
+                  alt={attachment.name || "attachment"}
+                  className="rounded-md max-w-[240px] max-h-[280px] object-cover"
+                />
+              ) : (
+                <a
+                  href={attachment.data}
+                  download={attachment.name || "file"}
+                  target="_blank"
+                  rel="noreferrer"
+                  className={`text-[13px] underline break-all ${isDark ? "text-[#cfe9ff]" : "text-[#034f84]"}`}
+                >
+                  {attachment.name || "Download file"}
+                </a>
+              )
+            )}
+            {props.content ? (
+              <span
+                className={`text-[14.5px] leading-5 whitespace-pre-wrap break-words
+                 ${isDark ? "text-[#e9edef]" : "text-[#111b21]"}`}
+              >
+                {props.content}
+              </span>
+            ) : null}
+            <div className="flex justify-end">
             <span
               className={`text-[11px] leading-[15px] ml-2 shrink-0 flex items-center gap-[3px]
               ${isDark ? "text-[#8696a0]" : "text-[#667781]"}`}
@@ -60,6 +84,7 @@ function MessageSelf({ props, isDark }) {
               })}
               <MessageTick status={status} />
             </span>
+            </div>
           </div>
         </div>
       </div>

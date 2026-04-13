@@ -7,7 +7,6 @@ import CameraAltIcon from "@mui/icons-material/CameraAlt";
 import CheckIcon from "@mui/icons-material/Check";
 import CloseIcon from "@mui/icons-material/Close";
 import { IconButton } from "@mui/material";
-import axios from "axios";
 
 function Profile() {
   const navigate = useNavigate();
@@ -47,10 +46,15 @@ function Profile() {
     const token = getToken();
     if (!token) { navigate("/"); return; }
 
-    axios.get(`${import.meta.env.VITE_API_URL}/user/profile`, {
+    fetch(`${import.meta.env.VITE_API_URL}/user/profile`, {
+      method: "GET",
       headers: { Authorization: `Bearer ${token}` },
     })
-      .then(({ data }) => {
+      .then(async (response) => {
+        const data = await response.json();
+        if (!response.ok) {
+          throw new Error("Failed to load profile");
+        }
         setProfile({
           name: data.name || "",
           email: data.email || "",
@@ -84,11 +88,20 @@ function Profile() {
     setSaving(true);
     setStatus(null);
     try {
-      const { data } = await axios.put(
-        `${import.meta.env.VITE_API_URL}/user/profile`,
-        fields,
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/user/profile`, {
+        method: "PUT",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-type": "application/json",
+        },
+        body: JSON.stringify(fields),
+      });
+      const data = await response.json();
+      if (!response.ok) {
+        const error = new Error("Failed to save profile");
+        error.data = data;
+        throw error;
+      }
       setProfile((prev) => ({ ...prev, ...fields, ...data }));
 
       // Update localStorage so the app reflects changes immediately
@@ -102,7 +115,7 @@ function Profile() {
       setStatus({ type: "success", msg: "Saved!" });
       setTimeout(() => setStatus(null), 2000);
     } catch (err) {
-      const msg = err.response?.data?.message || "Failed to save. Try again.";
+      const msg = err.data?.message || "Failed to save. Try again.";
       setStatus({ type: "error", msg });
     } finally {
       setSaving(false);

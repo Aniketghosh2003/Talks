@@ -1,5 +1,4 @@
 import React, { useState } from "react";
-import axios from "axios";
 import { useNavigate } from "react-router-dom";
 
 function AuthComponents() {
@@ -20,17 +19,23 @@ function AuthComponents() {
     setLoading(true);
     setLoginStatus("");
     try {
-      const config = {
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/user/login/`, {
+        method: "POST",
         headers: { "Content-type": "application/json" },
-        withCredentials: true,
-      };
-      const response = await axios.post(
-        `${import.meta.env.VITE_API_URL}/user/login/`,
-        data,
-        config
-      );
+        credentials: "include",
+        body: JSON.stringify(data),
+      });
+
+      const responseData = await response.json();
+      if (!response.ok) {
+        const error = new Error("Login failed");
+        error.status = response.status;
+        error.data = responseData;
+        throw error;
+      }
+
       setLoginStatus({ msg: "Success", key: Math.random() });
-      localStorage.setItem("userData", JSON.stringify(response));
+      localStorage.setItem("userData", JSON.stringify({ data: responseData }));
       setLoading(false);
       navigate("/app/welcome");
     } catch (error) {
@@ -44,23 +49,29 @@ function AuthComponents() {
     setLoading(true);
     setSignInStatus("");
     try {
-      const config = {
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/user/register/`, {
+        method: "POST",
         headers: { "Content-type": "application/json" },
-        withCredentials: true,
-      };
-      const response = await axios.post(
-        `${import.meta.env.VITE_API_URL}/user/register/`,
-        data,
-        config
-      );
+        credentials: "include",
+        body: JSON.stringify(data),
+      });
+
+      const responseData = await response.json();
+      if (!response.ok) {
+        const error = new Error("Registration failed");
+        error.status = response.status;
+        error.data = responseData;
+        throw error;
+      }
+
       setSignInStatus({ msg: "Success", key: Math.random() });
-      localStorage.setItem("userData", JSON.stringify(response));
+      localStorage.setItem("userData", JSON.stringify({ data: responseData }));
       setLoading(false);
       navigate("/app/welcome");
     } catch (error) {
-      if (error.response?.status === 405) {
+      if (error.status === 405) {
         setSignInStatus({ msg: "Email already in use", key: Math.random() });
-      } else if (error.response?.status === 406) {
+      } else if (error.status === 406) {
         setSignInStatus({ msg: "Username already taken", key: Math.random() });
       } else {
         setSignInStatus({ msg: "Registration failed. Please try again.", key: Math.random() });

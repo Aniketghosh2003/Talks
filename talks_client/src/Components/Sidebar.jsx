@@ -1,5 +1,4 @@
 import React, { useState, useEffect, useContext } from "react";
-import AccountCircleIcon from "@mui/icons-material/AccountCircle";
 import PersonAddIcon from "@mui/icons-material/PersonAdd";
 import GroupAddIcon from "@mui/icons-material/GroupAdd";
 import AddCircleIcon from "@mui/icons-material/AddCircle";
@@ -7,14 +6,10 @@ import NightlightIcon from "@mui/icons-material/Nightlight";
 import ExitToAppIcon from "@mui/icons-material/ExitToApp";
 import SearchIcon from "@mui/icons-material/Search";
 import { IconButton } from "@mui/material";
-import ConversationItem from "./ConversationItem";
 import { useNavigate } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
 import { toggleTheme } from "../redux/themeSlice";
-import { refreshSidebarFun } from "../redux/refreshSidebar";
 import LightModeIcon from "@mui/icons-material/LightMode";
-import { motion } from "framer-motion";
-import axios from "axios";
 import { myContext } from "./MainComponent";
 
 function Sidebar() {
@@ -25,7 +20,67 @@ function Sidebar() {
   const { refresh, setRefresh } = useContext(myContext);
   const [conversations, setConversations] = useState([]);
   const [searchQuery, setSearchQuery] = useState("");
-  const userData = JSON.parse(localStorage.getItem("userData"));
+  const getUserDataSafely = () => {
+    const raw = localStorage.getItem("userData");
+    if (!raw) return null;
+    try {
+      const parsed = JSON.parse(raw);
+      if (parsed?.data?.token) return parsed;
+      if (parsed?.token) return { data: parsed };
+      return parsed;
+    } catch {
+      return null;
+    }
+  };
+
+  const userData = getUserDataSafely();
+  const token = userData?.data?.token || userData?.token;
+  const currentUserId = userData?.data?._id || userData?._id;
+  const [currentUserProfilePic, setCurrentUserProfilePic] = useState(
+    userData?.data?.profilePic || userData?.profilePic || null
+  );
+  const [currentUserInitial, setCurrentUserInitial] = useState(
+    userData?.data?.name?.[0]?.toUpperCase() || userData?.name?.[0]?.toUpperCase() || "U"
+  );
+
+  useEffect(() => {
+    if (!token) return;
+
+    const fetchMyProfile = async () => {
+      try {
+        const response = await fetch(`${import.meta.env.VITE_API_URL}/user/profile`, {
+          method: "GET",
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        });
+        const responseData = await response.json();
+        if (!response.ok) {
+          throw new Error("Failed to fetch profile");
+        }
+
+        setCurrentUserProfilePic(responseData.profilePic || null);
+        setCurrentUserInitial(responseData.name?.[0]?.toUpperCase() || "U");
+
+        const stored = getUserDataSafely();
+        if (stored?.data) {
+          stored.data.name = responseData.name || stored.data.name;
+          stored.data.profilePic = responseData.profilePic || "";
+          stored.data.about = responseData.about || stored.data.about;
+          localStorage.setItem("userData", JSON.stringify(stored));
+        } else if (stored) {
+          stored.name = responseData.name || stored.name;
+          stored.profilePic = responseData.profilePic || "";
+          stored.about = responseData.about || stored.about;
+          localStorage.setItem("userData", JSON.stringify(stored));
+        }
+      } catch (error) {
+        console.error("Error fetching profile for sidebar:", error);
+      }
+    };
+
+    fetchMyProfile();
+  }, [token, refresh, refreshSidebar]);
 
   useEffect(() => {
     if (!userData) {
@@ -36,21 +91,27 @@ function Sidebar() {
 
     const fetchConversations = async () => {
       try {
-        const token = userData?.data?.token || userData?.token;
         const config = {
           headers: {
             Authorization: `Bearer ${token}`,
           },
         };
-        const response = await axios.get(`${import.meta.env.VITE_API_URL}/chat/`, config);
-        setConversations(response.data);
+        const response = await fetch(`${import.meta.env.VITE_API_URL}/chat/`, {
+          method: "GET",
+          headers: config.headers,
+        });
+        const responseData = await response.json();
+        if (!response.ok) {
+          throw new Error("Failed to fetch conversations");
+        }
+        setConversations(Array.isArray(responseData) ? responseData : []);
       } catch (error) {
         console.error("Error fetching conversations:", error);
       }
     };
 
     fetchConversations();
-  }, [refresh, refreshSidebar, userData, navigate]);
+  }, [refresh, refreshSidebar, token, navigate]);
 
   const handleLogout = () => {
     // Clear local storage
@@ -60,7 +121,7 @@ function Sidebar() {
   };
 
   return (
-    <div className={`w-[30%] min-w-[350px] max-w-[450px] flex flex-col border-r ${!lightTheme ? "bg-[#111b21] border-[#222d34]" : "bg-white border-[#d1d7db]"}`}>
+    <div className={`w-full h-full flex flex-col border-r ${!lightTheme ? "bg-[#111b21] border-[#222d34]" : "bg-white border-[#d1d7db]"}`}>
       {/* Header with icons */}
       <div className={`px-4 py-2.5 flex justify-between items-center h-[59px] shrink-0
         ${lightTheme ? "bg-[#f0f2f5]" : "bg-[#202c33]"}`}>
@@ -81,9 +142,18 @@ function Sidebar() {
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
+              overflow: "hidden",
             }}
           >
-            {userData?.data?.name?.[0]?.toUpperCase() || userData?.name?.[0]?.toUpperCase() || "U"}
+            {currentUserProfilePic ? (
+              <img
+                src={currentUserProfilePic}
+                alt="Profile"
+                style={{ width: "100%", height: "100%", objectFit: "cover" }}
+              />
+            ) : (
+              currentUserInitial
+            )}
           </button>
         </div>
         <div className="flex space-x-1">
@@ -128,12 +198,12 @@ function Sidebar() {
       {/* Conversations list */}
       <div className={`flex-1 overflow-y-auto ${lightTheme ? "bg-white" : "bg-[#111b21]"}`}>
         {conversations.map((conversation, index) => {
-          if (!conversation.isGroupchat && conversation.users.length === 1) {
+          const users = Array.isArray(conversation.users) ? conversation.users : [];
+          if (!conversation.isGroupchat && users.length === 1) {
             return <div key={index}></div>;
           }
 
-          const currentUserId = userData?.data?._id || userData?._id;
-          const otherUser = conversation.users.find(user => user._id !== currentUserId);
+          const otherUser = users.find(user => user._id !== currentUserId);
           const isGroup = conversation.isGroupchat;
 
           if (!otherUser && !isGroup) {
@@ -157,7 +227,7 @@ function Sidebar() {
               className={`flex items-center px-3 cursor-pointer
                 ${lightTheme ? "hover:bg-[#f5f6f6]" : "hover:bg-[#202c33]"}`}
               onClick={() => {
-                setRefresh(!refresh);
+                setRefresh((prev) => !prev);
                 if (conversation._id) {
                   navigate(`/app/chat/${conversation._id}`);
                 }

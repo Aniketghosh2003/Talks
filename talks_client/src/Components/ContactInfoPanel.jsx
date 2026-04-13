@@ -3,7 +3,6 @@ import CloseIcon from "@mui/icons-material/Close";
 import CameraAltIcon from "@mui/icons-material/CameraAlt";
 import { IconButton } from "@mui/material";
 import { useSelector } from "react-redux";
-import axios from "axios";
 
 function ContactInfoPanel({
   user,
@@ -61,15 +60,24 @@ function ContactInfoPanel({
     const token = ud?.data?.token;
     if (!token) return;
     try {
-      await axios.put(
-        `${import.meta.env.VITE_API_URL}/chat/groupPic`,
-        { chatId, groupPic: base64 },
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/chat/groupPic`, {
+        method: "PUT",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-type": "application/json",
+        },
+        body: JSON.stringify({ chatId, groupPic: base64 }),
+      });
+      const responseData = await response.json();
+      if (!response.ok) {
+        const error = new Error("Failed to update group icon");
+        error.data = responseData;
+        throw error;
+      }
       setGroupPic(base64);
       if (onGroupPicUpdate) onGroupPicUpdate(base64);
     } catch (err) {
-      setError(err.response?.data?.message || "Failed to update group icon");
+      setError(err.data?.message || "Failed to update group icon");
     } finally {
       setUploading(false);
     }
@@ -95,7 +103,7 @@ function ContactInfoPanel({
           top: 0,
           right: 0,
           bottom: 0,
-          width: "340px",
+          width: "min(340px, 100vw)",
           background: bg,
           zIndex: 50,
           display: "flex",

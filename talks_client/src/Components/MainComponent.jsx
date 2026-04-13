@@ -1,6 +1,6 @@
 import React, { createContext, useState, useEffect } from "react";
 import Sidebar from "./Sidebar";
-import { Outlet } from "react-router-dom";
+import { Outlet, useLocation } from "react-router-dom";
 import { useSelector } from "react-redux";
 import io from "socket.io-client";
 
@@ -11,8 +11,12 @@ let socket;
 
 function MainComponent() {
   const lightTheme = useSelector((state) => state.themeKey);
+  const location = useLocation();
   const [refresh, setRefresh] = useState(false);
   const [onlineUsers, setOnlineUsers] = useState([]);
+
+  const isListRoute =
+    location.pathname === "/app/welcome" || location.pathname === "/app/chat";
 
   useEffect(() => {
     socket = io(ENDPOINT);
@@ -50,8 +54,12 @@ function MainComponent() {
       ${lightTheme ? "bg-[#f0f2f5]" : "bg-[#111b21]"}`}
     >
       <myContext.Provider value={{ refresh, setRefresh, socket, onlineUsers }}>
-        <Sidebar />
-        <Outlet />
+        <div className={`${isListRoute ? "flex" : "hidden md:flex"} h-full w-full md:w-[30%] md:min-w-[320px] md:max-w-[450px] md:flex-none`}>
+          <Sidebar />
+        </div>
+        <div className={`${isListRoute ? "hidden md:flex" : "flex"} h-full flex-1 min-w-0`}>
+          <Outlet />
+        </div>
       </myContext.Provider>
     </div>
   );

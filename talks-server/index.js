@@ -10,7 +10,8 @@ const cors = require("cors");
 dotenv.config();
 
 const app = express();
-app.use(express.json());
+app.use(express.json({ limit: "10mb" }));
+app.use(express.urlencoded({ limit: "10mb", extended: true }));
 
 // Connect to MongoDB
 const connectDB = async () => {
@@ -40,6 +41,13 @@ app.get("/", (req, res) => {
 app.use("/user", userRoutes);
 app.use("/chat", chatRoutes);
 app.use("/message", messageRoutes);
+
+app.use((err, req, res, next) => {
+  if (err?.type === "entity.too.large") {
+    return res.status(413).json({ message: "File too large. Please upload a smaller file." });
+  }
+  return next(err);
+});
 
 const PORT = process.env.PORT || 3000;
 

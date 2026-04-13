@@ -1,19 +1,30 @@
 import React, { useState, useEffect, useContext } from "react";
 import SearchIcon from "@mui/icons-material/Search";
 import { IconButton } from "@mui/material";
-import { useSelector, useDispatch } from "react-redux";
+import { useSelector } from "react-redux";
 import { motion } from "framer-motion";
-import axios from "axios";
 import { myContext } from "./MainComponent";
 
 function Groups() {
   const lightTheme = useSelector((state) => state.themeKey);
-  const dispatch = useDispatch();
   const { refresh, setRefresh } = useContext(myContext);
   const [groups, setGroups] = useState([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [loading, setLoading] = useState(false);
-  const userData = JSON.parse(localStorage.getItem("userData"));
+  const getUserDataSafely = () => {
+    const raw = localStorage.getItem("userData");
+    if (!raw) return null;
+    try {
+      const parsed = JSON.parse(raw);
+      if (parsed?.data?.token) return parsed;
+      if (parsed?.token) return { data: parsed };
+      return parsed;
+    } catch {
+      return null;
+    }
+  };
+
+  const userData = getUserDataSafely();
 
   // Fetch available groups
   useEffect(() => {
@@ -26,18 +37,22 @@ function Groups() {
           },
         };
 
-        const response = await axios.get(
-          `${import.meta.env.VITE_API_URL}/chat/fetchGroups`, 
-          config
-        );
-        setGroups(response.data);
+        const response = await fetch(`${import.meta.env.VITE_API_URL}/chat/fetchGroups`, {
+          method: "GET",
+          headers: config.headers,
+        });
+        const responseData = await response.json();
+        if (!response.ok) {
+          throw new Error("Failed to fetch groups");
+        }
+        setGroups(responseData);
       } catch (error) {
         console.error("Error fetching groups:", error);
       }
     };
 
     fetchGroups();
-  }, [refresh, userData.data.token]);
+  }, [refresh, userData?.data?.token, userData?.token]);
 
   // Join group handler
   const handleJoinGroup = async (groupId) => {
@@ -51,16 +66,22 @@ function Groups() {
       };
 
       const userId = userData?.data?._id || userData?._id;
-      await axios.put(
-        `${import.meta.env.VITE_API_URL}/chat/addSelfToGroup`,
-        {
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/chat/addSelfToGroup`, {
+        method: "PUT",
+        headers: {
+          ...config.headers,
+          "Content-type": "application/json",
+        },
+        body: JSON.stringify({
           chatId: groupId,
           userId: userId,
-        },
-        config
-      );
+        }),
+      });
+      if (!response.ok) {
+        throw new Error("Failed to join group");
+      }
 
-      setRefresh(!refresh); // Trigger sidebar refresh
+      setRefresh((prev) => !prev); // Trigger sidebar refresh
     } catch (error) {
       console.error("Error joining group:", error);
     } finally {
@@ -74,7 +95,7 @@ function Groups() {
   );
 
   return (
-    <div className={`flex-[0.7] flex flex-col ${!lightTheme ? "bg-gray-800" : ""}`}>
+    <div className={`w-full md:flex-[0.7] flex flex-col ${!lightTheme ? "bg-gray-800" : ""}`}>
       {/* Header */}
       <div className={`flex items-center gap-3 p-3 m-3 rounded-2xl shadow-md
         ${lightTheme ? "bg-white" : "bg-gray-700"}`}>

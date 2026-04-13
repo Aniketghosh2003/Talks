@@ -8,6 +8,8 @@ function MessageOthers({ props, isDark, isGroup }) {
 
   const senderPic = props.sender?.profilePic || null;
   const senderInitial = props.sender?.name?.[0]?.toUpperCase() || "U";
+  const attachment = props.attachment;
+  const isImageAttachment = attachment?.mimeType?.startsWith("image/");
 
   return (
     <div className="flex mb-[2px] w-full items-end gap-1">
@@ -35,11 +37,33 @@ function MessageOthers({ props, isDark, isGroup }) {
             </p>
           )}
 
-          <div className="flex items-end">
-            <span className={`text-[14.5px] leading-5 whitespace-pre-wrap break-words
-               ${isDark ? "text-[#e9edef]" : "text-[#111b21]"}`}>
-              {props.content}
-            </span>
+          <div className="flex flex-col gap-1">
+            {attachment && (
+              isImageAttachment ? (
+                <img
+                  src={attachment.data}
+                  alt={attachment.name || "attachment"}
+                  className="rounded-md max-w-[240px] max-h-[280px] object-cover"
+                />
+              ) : (
+                <a
+                  href={attachment.data}
+                  download={attachment.name || "file"}
+                  target="_blank"
+                  rel="noreferrer"
+                  className={`text-[13px] underline break-all ${isDark ? "text-[#cfe9ff]" : "text-[#034f84]"}`}
+                >
+                  {attachment.name || "Download file"}
+                </a>
+              )
+            )}
+            {props.content ? (
+              <span className={`text-[14.5px] leading-5 whitespace-pre-wrap break-words
+                 ${isDark ? "text-[#e9edef]" : "text-[#111b21]"}`}>
+                {props.content}
+              </span>
+            ) : null}
+            <div className="flex justify-end">
             <span
               className={`text-[11px] leading-[15px] ml-3 mt-1 shrink-0
               ${isDark ? "text-[#8696a0]" : "text-[#667781]"}`}
@@ -49,6 +73,7 @@ function MessageOthers({ props, isDark, isGroup }) {
                 minute: "2-digit",
               })}
             </span>
+            </div>
           </div>
         </div>
       </div>

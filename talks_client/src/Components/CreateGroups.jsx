@@ -17,7 +17,6 @@ import {
 } from "@mui/material";
 import { useSelector } from "react-redux";
 import { motion } from "framer-motion";
-import axios from "axios";
 import { useNavigate } from "react-router-dom";
 
 function CreateGroups() {
@@ -30,7 +29,20 @@ function CreateGroups() {
   const [selectedUsers, setSelectedUsers] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-  const userData = JSON.parse(localStorage.getItem("userData"));
+  const getUserDataSafely = () => {
+    const raw = localStorage.getItem("userData");
+    if (!raw) return null;
+    try {
+      const parsed = JSON.parse(raw);
+      if (parsed?.data?.token) return parsed;
+      if (parsed?.token) return { data: parsed };
+      return parsed;
+    } catch {
+      return null;
+    }
+  };
+
+  const userData = getUserDataSafely();
 
   useEffect(() => {
     if (!userData) {
@@ -46,9 +58,16 @@ function CreateGroups() {
             Authorization: `Bearer ${token}`,
           },
         };
-        const response = await axios.get(`${import.meta.env.VITE_API_URL}/user/fetchUsers`, config);
+        const response = await fetch(`${import.meta.env.VITE_API_URL}/user/fetchUsers`, {
+          method: "GET",
+          headers: config.headers,
+        });
+        const responseData = await response.json();
+        if (!response.ok) {
+          throw new Error("Failed to fetch users");
+        }
         const currentUserId = userData?.data?._id || userData?._id;
-        setUsers(response.data.filter(user => user._id !== currentUserId));
+        setUsers(responseData.filter(user => user._id !== currentUserId));
       } catch (error) {
         console.error("Error fetching users:", error);
         setError("Failed to fetch users");
@@ -56,7 +75,7 @@ function CreateGroups() {
     };
 
     fetchUsers();
-  }, [userData?.data._id, userData?.data.token, navigate]);
+  }, [userData?.data?._id, userData?.data?.token, userData?.token, navigate]);
 
   const handleClickOpen = () => {
     if (groupName.trim()) {
@@ -96,23 +115,33 @@ function CreateGroups() {
         },
       };
 
-      const response = await axios.post(
-        `${import.meta.env.VITE_API_URL}/chat/createGroup`,
-        {
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/chat/createGroup`, {
+        method: "POST",
+        headers: {
+          ...config.headers,
+          "Content-type": "application/json",
+        },
+        body: JSON.stringify({
           name: groupName,
           users: JSON.stringify(selectedUsers),
-        },
-        config
-      );
+        }),
+      });
+      const responseData = await response.json();
+      if (!response.ok) {
+        const error = new Error("Failed to create group");
+        error.status = response.status;
+        error.data = responseData;
+        throw error;
+      }
 
-      if (response.data) {
+      if (responseData) {
         setLoading(false);
         handleClose();
         navigate("/app/groups");
       }
     } catch (error) {
       console.error("Error creating group:", error);
-      setError(error.response?.data?.message || "Failed to create group");
+      setError(error.data?.message || "Failed to create group");
       setLoading(false);
     }
   };
@@ -121,7 +150,7 @@ function CreateGroups() {
     <>
       <motion.div
         whileTap={{ scale: 0.98 }}
-        className={`flex-[0.7] self-center px-5 py-2.5 m-2.5 rounded-xl flex justify-between shadow-md
+        className={`w-full md:flex-[0.7] self-center px-5 py-2.5 m-2.5 rounded-xl flex justify-between shadow-md
         ${lightTheme ? "bg-white" : "bg-gray-700"}`}
       >
         <input
