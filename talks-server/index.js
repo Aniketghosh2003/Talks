@@ -27,12 +27,33 @@ const connectDB = async () => {
 // Initialize DB connection
 connectDB();
 
-app.use(
-  cors({
-    origin: process.env.FRONTEND_URL ? process.env.FRONTEND_URL.split(",").map((origin) => origin.trim()) : "http://localhost:5173",
-    credentials: true,
-  })
-);
+const normalizeOrigin = (origin) => origin.replace(/\/$/, "");
+const configuredOrigins = (process.env.FRONTEND_URL || "http://localhost:5173")
+  .split(",")
+  .map((origin) => normalizeOrigin(origin.trim()))
+  .filter(Boolean);
+
+const isVercelOrigin = (origin) => /^https:\/\/[a-z0-9-]+\.vercel\.app$/i.test(origin);
+
+const corsOptions = {
+  origin: (origin, callback) => {
+    // Allow non-browser requests (curl/postman/server-to-server)
+    if (!origin) return callback(null, true);
+
+    const normalizedOrigin = normalizeOrigin(origin);
+    const isConfigured = configuredOrigins.includes(normalizedOrigin);
+
+    if (isConfigured || isVercelOrigin(normalizedOrigin)) {
+      return callback(null, true);
+    }
+
+    return callback(new Error("Not allowed by CORS"));
+  },
+  credentials: true,
+};
+
+app.use(cors(corsOptions));
+app.options("*", cors(corsOptions));
 
 app.get("/", (req, res) => {
   res.send("Hello World!");
@@ -57,7 +78,7 @@ const server = app.listen(PORT, () => {
 
 const io = require("socket.io")(server, {
   cors: {
-    origin: process.env.FRONTEND_URL ? process.env.FRONTEND_URL.split(",").map((origin) => origin.trim()) : "http://localhost:5173",
+    origin: configuredOrigins,
     credentials: true,
   },
 });
